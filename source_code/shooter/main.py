@@ -5,12 +5,23 @@ import random
 W,H = 160,120#画面の幅、高さ
 player_speed=1.5
 bullet_speed=2
+player_animations={
+            "normal":(0,24,0,8,8,11),#イメージバンク番号,x,y,幅,高さ,透明扱いの色(ないなら空白)
+            "right":(0,32,0,8,8,11),
+            "left":(0,24,8,8,8,11),
+            "up":(0,24,0,8,8,11),
+            "down":(0,24,0,8,8,11),
+            "damage":(0,32,8,8,8,11)
+        }
 enemy_w,enemy_h=12,12
 sound_list={
-    "bang":(0,0),
-    "boom":(0,1),
-    "hit":(0,2),
+    "None":(0,0),
+    "bang":(0,1),
+    "boom":(0,2),
+    "hit":(0,3),
+    "start":(0,4)
 }
+
 class base_sprite:
     def __init__(self,x,y,w=8,h=8,life=1):
         """コンストラクタ"""
@@ -26,23 +37,16 @@ class base_sprite:
         """描画(派生クラスで実装)"""
 
 class player_sprite(base_sprite):
-    def __init__(self, x, y,bullet,bomb,life):
+    def __init__(self, x, y,speed,bullet,bomb,life):
         """コンストラクタ"""
         super().__init__(x, y,8,8,life)#親クラスのコンストラクタ(座標二つ,幅と高さ)
-        self.cost="up"
+        self.cost="normal"
+        self.speed=speed
         self.bullets=bullet
         self.bullet_frame_count=0
         self.bomb=bomb
         #コスチューム用意
-        self.cost_list={
-            "normal":(0,24,0,self.w,self.h,11),#イメージバンク番号,x,y,幅,高さ,透明扱いの色(ないなら空白)
-            #"smile":(0,0,8,self.w,self.h),
-            "right":(0,32,0,self.w,self.h,11),
-            "left":(0,24,8,self.w,self.h,11),
-            "up":(0,24,0,self.w,self.h,11),
-            "down":(0,24,0,self.w,self.h,11),
-            "damage":(0,32,8,self.w,self.h,11)
-        }
+        self.cost_list=player_animations
     def update(self):
         """更新処理"""
         self.move_control()
@@ -59,20 +63,20 @@ class player_sprite(base_sprite):
     def move_control(self):
         if ( (pyxel.btn(pyxel.KEY_A) and not(pyxel.btn(pyxel.KEY_D) ) ) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_DPAD_LEFT) ) and 0<self.x+(self.w/2):
             if not self.cost=="damage":self.cost="left"
-            self.vx=-1*player_speed
+            self.vx=-1*self.speed
         elif ( pyxel.btn(pyxel.KEY_D) and not pyxel.btn(pyxel.KEY_A) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_DPAD_RIGHT) ) and (self.x+self.w)-(self.w/2) < W:
             if not self.cost=="damage":self.cost="right"
-            self.vx=player_speed
+            self.vx=self.speed
         else:
             if not self.cost=="damage":self.cost="normal"
             self.vx=0
         
         if ( pyxel.btn(pyxel.KEY_W) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_DPAD_UP) ) and 0<self.y+(self.h/2):
             if not(self.cost=="right" or self.cost=="left" or self.cost=="damage"):self.cost="up"
-            self.vy=-1*player_speed
+            self.vy=-1*self.speed
         elif ( pyxel.btn(pyxel.KEY_S) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_DPAD_DOWN) ) and (self.y+self.h)-(self.w/2) < H:
             if not(self.cost=="right" or self.cost=="left" or self.cost=="damage"):self.cost="down"
-            self.vy=player_speed
+            self.vy=self.speed
         else:
             self.vy=0
         
@@ -87,12 +91,13 @@ class player_sprite(base_sprite):
             pass
             #self.cost="normal"
     def other_control(self):
-        if (pyxel.btn(pyxel.KEY_SPACE) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_B))and (pyxel.frame_count-self.bullet_frame_count>6):#スペースキーと前回の発射から6フレ
-            self.bullets.append(bullet_sprite(self.x,self.y,2,6,cost=self.cost,speed=bullet_speed,bomb=self.bomb))
-            self.bullet_frame_count=pyxel.frame_count
-        if pyxel.btn(pyxel.KEY_SPACE):
-            pass
-            #self.cost="smile"
+        if (pyxel.btn(pyxel.KEY_SPACE) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_B)):#スペースキー
+            self.speed=player_speed*2/3
+            if (pyxel.frame_count-self.bullet_frame_count>6):#前回発射から6フレ
+                self.bullets.append(bullet_sprite(self.x,self.y,2,6,cost=self.cost,speed=bullet_speed,bomb=self.bomb))
+                self.bullet_frame_count=pyxel.frame_count
+        else:
+            self.speed=player_speed
 
 class enemy(base_sprite):
     def __init__(self, x, y,life):
@@ -209,7 +214,6 @@ class Game:
         pyxel.run(self.update,self.draw)#実行関数(デフォルト毎秒30回)
     def update(self):
         """更新処理"""
-        self.jadge_life()
         for s in self.snow_list: s.update()#スノーパーティクルのアップデート処理
         for b in self.bullets: b.update()#弾の更新処理
         for b in self.bomb:b.update()#爆発パーティクル更新処理
@@ -220,7 +224,9 @@ class Game:
             if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :
                 self.player_create()
                 self.pose = 1
+                pyxel.play(*sound_list["start"])
         elif self.pose == 1:
+            self.jadge_life()
             self.jadge_hit()
             #プレイヤーのアップデートと爆殺処理
             if self.player.life<=0:
@@ -250,9 +256,9 @@ class Game:
             pyxel.text(10,10,f"HP:{self.player.life}",14)#playerとHP描画
             pyxel.text(10,20,f"SCORE:{self.score}",14)
         elif self.pose==2:#result
-                pyxel.text((W/2)-18,(H/2)-3,"GAME OVER",14)
-                pyxel.text((W/2)-2*len(f"SCORE:{self.score}"),(W/2)-8,f"SCORE:{self.score}",14)
-                pyxel.text((W/2)-2*len(f"HIGH SCORE:{self.high_score}"),(W/2)+16,f"HIGH SCORE:{self.score}",14)
+                pyxel.text( (W/2)-18 , (H/2)+12 , "GAME OVER" , 14 )
+                pyxel.text( (W/2)-2*len(f"SCORE:{self.score}") , (W/2)+4 , f"SCORE:{self.score}" ,14 )
+                pyxel.text((W/2)-2*len(f"HIGH SCORE:{self.high_score}") , (W/2) , f"HIGH SCORE:{self.high_score}" , 14)
     def jadge_hit(self):
         """当たり判定"""
         for e in self.enemy_list: 
@@ -281,10 +287,9 @@ class Game:
         self.bomb[:] = [b for b in self.bomb if b.life > 0]#爆発パーティクル生存判定
         self.enemy_list[:] = [e for e in self.enemy_list if e.life > 0]#敵生存判定
     def player_create(self):
-        self.player=player_sprite(W/2,100,bullet=self.bullets,bomb=self.bomb,life=3)#プレイヤー生成
+        self.player=player_sprite(W/2,100,speed=player_speed,bullet=self.bullets,bomb=self.bomb,life=3)#プレイヤー生成
         self.score=0
         self.hit_frame=pyxel.frame_count
-
 
 def main():
     """メイン処理"""
@@ -292,4 +297,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
