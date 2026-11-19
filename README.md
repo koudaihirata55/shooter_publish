@@ -1,1 +1,4 @@
-# shooter_publish
+シューティングゲームの基礎を作りました。
+WASDまたはD-PADで移動
+spaceまたはb-buttonで弾を発射
+spaceまたはstart-buttonでスタート
