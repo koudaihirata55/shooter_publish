@@ -205,6 +205,7 @@ class Game:
         self.pose=0#0:スタート 1:プレイ 2:リザルト
         self.hit_frame=pyxel.frame_count
         self.score=0
+        self. high_score=0
         pyxel.run(self.update,self.draw)#実行関数(デフォルト毎秒30回)
     def update(self):
         """更新処理"""
@@ -216,7 +217,7 @@ class Game:
 
         if self.pose==0:
             # スペースキーが押されたらプレイヤーを生成してプレイ状態(1)へ
-            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_START) :
+            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :
                 self.player_create()
                 self.pose = 1
         elif self.pose == 1:
@@ -231,7 +232,8 @@ class Game:
             else: 
                 pass
         elif self.pose==2:
-            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_START) :self.pose = 0
+            if self.score > self.high_score:self.high_score=self.score
+            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :self.pose = 0
     def draw(self):
         """描画処理"""
         pyxel.cls(0)#clear screen(画面の内容を消す)
@@ -240,16 +242,17 @@ class Game:
         for b in self.bomb: b.draw()#爆発パーティクルの描画処理
         for e in self.enemy_list : e.draw()#敵の描画処理
 
-        if self.pose == 0 :
+        if self.pose == 0 :#start
             pyxel.text(W/2-22,H/2,"PRESS START",14)
             #pyxel.text(W/2,H/2+10,"©koudai",14)
-        elif self.pose==1 :
+        elif self.pose==1 :#play
             self.player.draw()
             pyxel.text(10,10,f"HP:{self.player.life}",14)#playerとHP描画
             pyxel.text(10,20,f"SCORE:{self.score}",14)
-        elif self.pose==2:
+        elif self.pose==2:#result
                 pyxel.text((W/2)-18,(H/2)-3,"GAME OVER",14)
                 pyxel.text((W/2)-2*len(f"SCORE:{self.score}"),(W/2)-8,f"SCORE:{self.score}",14)
+                pyxel.text((W/2)-2*len(f"HIGH SCORE:{self.high_score}"),(W/2)+16,f"HIGH SCORE:{self.score}",1)
     def jadge_hit(self):
         """当たり判定"""
         for e in self.enemy_list: 
