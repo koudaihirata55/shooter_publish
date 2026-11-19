@@ -5,6 +5,8 @@ import random
 W,H = 160,120#画面の幅、高さ
 player_speed=1.5
 bullet_speed=2
+character_se_ch=1#ゲームの効果音のチャンネル番号
+system_sound_ch=0#システムサウンドのチャンネル番号
 player_animations={
             "normal":(0,24,0,8,8,11),#イメージバンク番号,x,y,幅,高さ,透明扱いの色(ないなら空白)
             "right":(0,32,0,8,8,11),
@@ -15,11 +17,12 @@ player_animations={
         }
 enemy_w,enemy_h=12,12
 sound_list={
-    "None":(0,0),
-    "bang":(0,1),
-    "boom":(0,2),
-    "hit":(0,3),
-    "start":(1,4)
+    "None":(character_se_ch,0),
+    "bang":(character_se_ch,1),
+    "boom":(character_se_ch,2),
+    "hit":(system_sound_ch,3),
+    "start":(system_sound_ch,4),
+    "game_over":(system_sound_ch,5)
 }
 
 class base_sprite:
@@ -207,7 +210,7 @@ class Game:
         self.snow_list = [#スノーパーティクルを50個生成
         snow_particle(random.randint(0, W), random.randint(0, H)) for _ in range(50)
         ]
-        self.pose=0#0:スタート 1:プレイ 2:リザルト
+        self.screen_status="start_menu"#0:スタート 1:プレイ 2:リザルト
         self.hit_frame=pyxel.frame_count
         self.score=0
         self. high_score=0
@@ -219,29 +222,12 @@ class Game:
         for b in self.bomb:b.update()#爆発パーティクル更新処理
         for e in self.enemy_list: e.update()#敵更新処理
 
-        if self.pose==0:
-            # スペースキーが押されたらプレイヤーを生成してプレイ状態(1)へ
-            self.jadge_life()
-            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :
-                self.player_create()
-                self.pose = 1
-                pyxel.play(*sound_list["start"])
-        elif self.pose == 1:
-            self.jadge_life()
-            self.jadge_hit()
-            #プレイヤーのアップデートと爆殺処理
-            if self.player.life<=0:
-                self.bomb.extend([bomb_particle(self.player.x,self.player.y,20,8)])
-                self.player.life+=-1
-                self.pose=2
-            elif self.player.life > 0: 
-                self.player.update()
-            else: 
-                pass
-        elif self.pose==2:
-            self.jadge_life()
-            if self.score > self.high_score : self.high_score=self.score
-            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :self.pose = 0
+        if self.screen_status=="start_menu":
+            self.start_menu_update()
+        elif self.screen_status == "play":
+            self.play_update()
+        elif self.screen_status=="result":
+            self.result_update()
     def draw(self):
         """描画処理"""
         pyxel.cls(0)#clear screen(画面の内容を消す)
@@ -250,17 +236,13 @@ class Game:
         for b in self.bomb: b.draw()#爆発パーティクルの描画処理
         for e in self.enemy_list : e.draw()#敵の描画処理
 
-        if self.pose == 0 :#start
-            pyxel.text(W/2-22,H/2,"PRESS START",14)
-            #pyxel.text(W/2,H/2+10,"©koudai",14)
-        elif self.pose==1 :#play
-            self.player.draw()
-            pyxel.text(10,10,f"HP:{self.player.life}",14)#playerとHP描画
-            pyxel.text(10,20,f"SCORE:{self.score}",14)
-        elif self.pose==2:#result
-                pyxel.text( (W/2)-18 , (H/2)-14 , "GAME OVER" , 14 )
-                pyxel.text( (W/2)-2*len(f"SCORE:{self.score}") , (H/2), f"SCORE:{self.score}" ,14 )
-                pyxel.text((W/2)-2*len(f"HIGH SCORE:{self.high_score}") , (H/2)+10 , f"HIGH SCORE:{self.high_score}" , 14)
+        if self.screen_status == "start_menu" :#start menu
+            self.start_menu_draw()
+        elif self.screen_status=="play" :#play
+            self.play_draw()
+        elif self.screen_status=="result":#result
+            self.result_draw()
+
     def jadge_hit(self):
         """当たり判定"""
         for e in self.enemy_list: 
@@ -292,6 +274,46 @@ class Game:
         self.player=player_sprite(W/2,100,speed=player_speed,bullet=self.bullets,bomb=self.bomb,life=3)#プレイヤー生成
         self.score=0
         self.hit_frame=pyxel.frame_count
+
+    def start_menu_update(self):#スタートメニューの更新処理
+        self.jadge_life()
+        if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :
+            # スペースキーが押されたらプレイヤーを生成してプレイ状態(1)へ
+            self.player_create()
+            self.screen_status = "play"
+            pyxel.play(*sound_list["None"])
+            pyxel.play(*sound_list["start"])
+    def start_menu_draw(self):
+            self.draw_text(W/2,H/2,"PRESS START",14)
+            #pyxel.text(W/2,H/2+10,"©koudai",14)
+
+    def play_update(self):#プレイ画面の更新処理
+            self.jadge_life()
+            self.jadge_hit()
+            #プレイヤーのアップデートと爆殺処理
+            if self.player.life<=0:
+                self.bomb.extend([bomb_particle(self.player.x,self.player.y,20,8)])
+                self.player.life+=-1
+                self.screen_status="result" ; pyxel.play(*sound_list["game_over"])
+            elif self.player.life > 0: 
+                self.player.update()
+            else: 
+                pass
+    def play_draw(self):
+        self.player.draw()
+        pyxel.text(10,5,f"HP:{self.player.life}",14)#playerとHP描画
+        pyxel.text(10,15,f"SCORE:{self.score}",14)
+    
+    def result_update(self):
+            self.jadge_life()
+            if self.score > self.high_score : self.high_score=self.score
+            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :self.screen_status = "start_menu"        
+    def result_draw(self):
+        self.draw_text(W/2,H/2-14,"GAME OVER",14)
+        self.draw_text(W/2,H/2,f"SCORE:{self.score}",14)
+        self.draw_text(W/2,H/2+10,(f"HIGH SCORE:{self.high_score}"),14)
+    def draw_text(self,x=W/2,y=H/2,text="text",col=14):#真ん中でテキスト描画
+        pyxel.text (x-2*len(text) , y-3, text , col )
 
 def main():
     """メイン処理"""
