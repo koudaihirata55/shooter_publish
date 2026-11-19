@@ -252,7 +252,7 @@ class Game:
         elif self.pose==2:#result
                 pyxel.text((W/2)-18,(H/2)-3,"GAME OVER",14)
                 pyxel.text((W/2)-2*len(f"SCORE:{self.score}"),(W/2)-8,f"SCORE:{self.score}",14)
-                pyxel.text((W/2)-2*len(f"HIGH SCORE:{self.high_score}"),(W/2)+16,f"HIGH SCORE:{self.score}",1)
+                pyxel.text((W/2)-2*len(f"HIGH SCORE:{self.high_score}"),(W/2)+16,f"HIGH SCORE:{self.score}",14)
     def jadge_hit(self):
         """当たり判定"""
         for e in self.enemy_list: 
