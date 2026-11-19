@@ -3,7 +3,7 @@ import math
 import random
 
 W,H = 160,120#画面の幅、高さ
-player_speed=3
+player_speed=1.5
 bullet_speed=2
 enemy_w,enemy_h=12,12
 sound_list={
