@@ -221,6 +221,7 @@ class Game:
 
         if self.pose==0:
             # スペースキーが押されたらプレイヤーを生成してプレイ状態(1)へ
+            self.jadge_life()
             if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :
                 self.player_create()
                 self.pose = 1
@@ -238,7 +239,8 @@ class Game:
             else: 
                 pass
         elif self.pose==2:
-            if self.score > self.high_score:self.high_score=self.score
+            self.jadge_life()
+            if self.score > self.high_score : self.high_score=self.score
             if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :self.pose = 0
     def draw(self):
         """描画処理"""
@@ -256,9 +258,9 @@ class Game:
             pyxel.text(10,10,f"HP:{self.player.life}",14)#playerとHP描画
             pyxel.text(10,20,f"SCORE:{self.score}",14)
         elif self.pose==2:#result
-                pyxel.text( (W/2)-18 , (H/2)+12 , "GAME OVER" , 14 )
-                pyxel.text( (W/2)-2*len(f"SCORE:{self.score}") , (W/2)+4 , f"SCORE:{self.score}" ,14 )
-                pyxel.text((W/2)-2*len(f"HIGH SCORE:{self.high_score}") , (W/2) , f"HIGH SCORE:{self.high_score}" , 14)
+                pyxel.text( (W/2)-18 , (H/2)-14 , "GAME OVER" , 14 )
+                pyxel.text( (W/2)-2*len(f"SCORE:{self.score}") , (H/2), f"SCORE:{self.score}" ,14 )
+                pyxel.text((W/2)-2*len(f"HIGH SCORE:{self.high_score}") , (H/2)+10 , f"HIGH SCORE:{self.high_score}" , 14)
     def jadge_hit(self):
         """当たり判定"""
         for e in self.enemy_list: 
