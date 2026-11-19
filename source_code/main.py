@@ -2,9 +2,12 @@ import pyxel
 import math
 import random
 
+
+#----------ゲームの定数----------
 W,H = 160,120#画面の幅、高さ
 player_speed=1.5
 bullet_speed=2
+enemy_max=10
 character_se_ch=1#ゲームの効果音のチャンネル番号
 system_sound_ch=0#システムサウンドのチャンネル番号
 player_animations={
@@ -24,7 +27,9 @@ sound_list={
     "start":(system_sound_ch,4),
     "game_over":(system_sound_ch,5)
 }
+#--------------------------------
 
+#----------スプライト----------
 class base_sprite:
     def __init__(self,x,y,w=8,h=8,life=1):
         """コンストラクタ"""
@@ -58,11 +63,6 @@ class player_sprite(base_sprite):
     def draw(self):
         """描画処理"""
         pyxel.blt(self.x,self.y,*self.cost_list[self.cost])
-    def move(self, spd, deg):#放置で。
-        """ 移動 """#角度
-        rad = deg * math.pi / 180
-        self.vx = spd * math.cos(rad) # x方向の速度
-        self.vy = spd * math.sin(rad) # y方向の速度
     def move_control(self):
         if ( (pyxel.btn(pyxel.KEY_A) and not(pyxel.btn(pyxel.KEY_D) ) ) or pyxel.btn(pyxel.GAMEPAD1_BUTTON_DPAD_LEFT) ) and 0<self.x+(self.w/2):
             if not self.cost=="damage":self.cost="left"
@@ -194,7 +194,8 @@ class bomb_particle(base_sprite):#爆発パーティクル
         """更新処理"""
         if self.l_size <= self.n_size : self.life=0
         else:self.n_size+=1
-    
+#------------------------------
+
 class Game:
     def __init__(self):
         """コンストラクタ"""
@@ -207,10 +208,12 @@ class Game:
         self.enemy_list=[
             enemy(random.randint(0,W),H/4,1)for _ in range(10)
         ]#敵リスト
+        self.enemy_max = enemy_max#敵の最大数を定数にに設定
         self.snow_list = [#スノーパーティクルを50個生成
         snow_particle(random.randint(0, W), random.randint(0, H)) for _ in range(50)
         ]
-        self.screen_status="start_menu"#0:スタート 1:プレイ 2:リザルト
+        self.screen_status="start_menu"#start_menu play traning ranking result
+        self.menu_selected_option="play" #play traning_mode online_ranking
         self.hit_frame=pyxel.frame_count
         self.score=0
         self. high_score=0
@@ -226,8 +229,13 @@ class Game:
             self.start_menu_update()
         elif self.screen_status == "play":
             self.play_update()
+        elif self.screen_status =="traning":
+            self.traning_update()
+        elif self.screen_status == "ranking":
+            self.ranking_update()
         elif self.screen_status=="result":
             self.result_update()
+        
     def draw(self):
         """描画処理"""
         pyxel.cls(0)#clear screen(画面の内容を消す)
@@ -238,9 +246,13 @@ class Game:
 
         if self.screen_status == "start_menu" :#start menu
             self.start_menu_draw()
-        elif self.screen_status=="play" :#play
+        elif self.screen_status == "play" :#play
             self.play_draw()
-        elif self.screen_status=="result":#result
+        elif self.screen_status == "traning":
+            self.traning_draw()
+        elif self.screen_status == "ranking":
+            self.ranking_draw()
+        elif self.screen_status == "result":#result
             self.result_draw()
 
     def jadge_hit(self):
@@ -267,9 +279,13 @@ class Game:
         """生存判定"""
         self.bullets[:] = [b for b in self.bullets if b.life > 0]#bulletsの中身を全部一つずつ取り出してlifeが1のインスタンスを抽出して入れ直す
         self.bomb.extend([bomb_particle(e.x,e.y,6) for e in self.enemy_list if e.life == 0]) #敵のHPがゼロになった時爆発パーティクル追加
-        self.enemy_list.extend([enemy(random.randint(0,W),H/4,1) for e in self.enemy_list if e.life ==0])#上に同じく新しい敵生成
         self.bomb[:] = [b for b in self.bomb if b.life > 0]#爆発パーティクル生存判定
         self.enemy_list[:] = [e for e in self.enemy_list if e.life > 0]#敵生存判定
+        while len(self.enemy_list) > self.enemy_max:#敵が多すぎたら削除
+             self.enemy_list.pop(0)
+        while len(self.enemy_list) < self.enemy_max:
+            self.enemy_list.append(enemy(random.randint(0,W) , H/4 , 1 ))#敵が減りすぎたら生成
+
     def player_create(self):
         self.player=player_sprite(W/2,100,speed=player_speed,bullet=self.bullets,bomb=self.bomb,life=3)#プレイヤー生成
         self.score=0
@@ -277,14 +293,32 @@ class Game:
 
     def start_menu_update(self):#スタートメニューの更新処理
         self.jadge_life()
-        if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :
-            # スペースキーが押されたらプレイヤーを生成してプレイ状態(1)へ
-            self.player_create()
+
+        if self.menu_selected_option=="play" and ( pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) ):
+            # playにカーソルがあってスペースキーが押されたらプレイヤーを生成してプレイ状態(1)へ
             self.screen_status = "play"
+            self.player_create()
+            self.enemy_max=enemy_max
             pyxel.play(*sound_list["None"])
             pyxel.play(*sound_list["start"])
+        elif self.menu_selected_option=="traning_mode" and( pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) ):
+            # traningにカーソルがあってスペースキーが押されたらトレーニングモードへ
+            self.screen_status = "traning"
+            self.player_create()
+            self.enemy_max=0
+            pyxel.play(*sound_list["None"])
+            pyxel.play(*sound_list["start"])
+        elif self.menu_selected_option=="online_ranking" and( pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) ):
+            #online rankingにカーソルがあってスペースキーが押されたならランキングへ
+            self.screen_status="ranking"
+            self.enemy_max=0
     def start_menu_draw(self):
-            self.draw_text(W/2,H/2,"PRESS START",14)
+            self.draw_text(W/2,H/2+12,"PLAY",14)
+            #self.draw_text(W/2,H/2+24,"TRANING MODE",14)
+            #self.draw_text(W/2,H/2+36,"ONLINE RANKING",14)
+            if self.menu_selected_option == "play" : self.draw_text(W/2,H/2+12,"PLAY",8)
+            if self.menu_selected_option =="traning_mode" :self.draw_text(W/2,H/2+24,"TRANING MODE",8)
+            if self.menu_selected_option == "online_ranking" : self.draw_text(W/2,H/2+36,"ONLINE RANKING",8)
             #pyxel.text(W/2,H/2+10,"©koudai",14)
 
     def play_update(self):#プレイ画面の更新処理
@@ -292,6 +326,9 @@ class Game:
             self.jadge_hit()
             #プレイヤーのアップデートと爆殺処理
             if self.player.life<=0:
+                #lifeがゼロになったら爆殺してリザルト画面へ 
+                #ハイスコア更新とハイスコアをサーバーへ
+                if self.score > self.high_score : self.high_score=self.score
                 self.bomb.extend([bomb_particle(self.player.x,self.player.y,20,8)])
                 self.player.life+=-1
                 self.screen_status="result" ; pyxel.play(*sound_list["game_over"])
@@ -303,10 +340,19 @@ class Game:
         self.player.draw()
         pyxel.text(10,5,f"HP:{self.player.life}",14)#playerとHP描画
         pyxel.text(10,15,f"SCORE:{self.score}",14)
+
+    def traning_update(self):#トレーニングモードの更新処理
+        self.play_update()
+    def traning_draw(self):
+        self.play_draw()
+
+    def ranking_update(self):
+        self.jadge_life()
+    def ranking_draw(self):
+        pass
     
     def result_update(self):
             self.jadge_life()
-            if self.score > self.high_score : self.high_score=self.score
             if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.GAMEPAD1_BUTTON_START) :self.screen_status = "start_menu"        
     def result_draw(self):
         self.draw_text(W/2,H/2-14,"GAME OVER",14)
