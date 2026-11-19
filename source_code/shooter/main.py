@@ -19,7 +19,7 @@ sound_list={
     "bang":(0,1),
     "boom":(0,2),
     "hit":(0,3),
-    "start":(0,4)
+    "start":(1,4)
 }
 
 class base_sprite:
